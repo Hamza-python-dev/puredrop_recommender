@@ -78,10 +78,53 @@ def check_interactions(df):
         _fail("each customer, product and date may appear only once", bad)
 
 
+def check_with_customers(df, customers):
+    dates = pd.to_datetime(df["date"], format="%Y-%m-%d")
+    paused = df["status"] == "paused"
+
+    # 1. every customer in the file must exist in customers.csv
+    bad = df[~df["customer_id"].isin(customers["customer_id"])]
+    if len(bad):
+        _fail("customer_id must exist in customers.csv", bad)
+
+    # 2. a customer has at most one paused run, with no gaps
+    first = dates[paused].groupby(df["customer_id"][paused]).min()
+    last = dates[paused].groupby(df["customer_id"][paused]).max()
+    count = df[paused].groupby("customer_id").size()
+    length = (last - first).dt.days + 1
+    broken = count[count != length]
+    if len(broken):
+        raise DataValidationError(
+            "Rule failed: each customer may have only one paused run. "
+            f"Customers with a gap or a second run: {list(broken.index)}")
+
+    # 3. nothing but paused rows may fall inside a paused run
+    run_start = df["customer_id"].map(first)
+    run_end = df["customer_id"].map(last)
+    inside = (dates >= run_start) & (dates <= run_end)
+    bad = df[inside & ~paused]
+    if len(bad):
+        _fail("no delivery or skip may fall inside a paused run", bad)
+
+    # 4. staple rows must follow the plan's rhythm
+    m = df.merge(customers[["customer_id", "plan", "staple_product_id"]],
+                 on="customer_id", how="left")
+    d = pd.to_datetime(m["date"], format="%Y-%m-%d")
+    day_number = (d - d.min()).dt.days
+    staple = (m["product_id"] == m["staple_product_id"]) & m["status"].isin(["delivered", "skipped"])
+    bad = m[(m["plan"] == "alternate_days") & staple & (day_number % 2 != 0)]
+    if len(bad):
+        _fail("alternate_days staple rows must fall on every second day", bad)
+        bad = m[(m["plan"] == "weekly") & staple & (d.dt.day_of_week != 4)]
+    if len(bad):
+        _fail("weekly staple rows must fall on a Friday", bad)
+
 if __name__ == "__main__":
     try:
         data = load_interactions("data/interactions.csv")
+        customers = load_interactions("data/customers.csv")
         check_interactions(data)
+        check_with_customers(data, customers)
     except DataValidationError as error:
         print(error)
         sys.exit(1)
