@@ -35,3 +35,24 @@ products.to_csv(DATA_DIR / "products.csv", index=False)
 customers.to_csv(DATA_DIR / "customers.csv", index=False)
 print(customers)
 print(customers["plan"].value_counts())
+
+dates = pd.date_range(START_DATE, periods=N_DAYS, freq="D")
+rows = []
+
+for c in customers.itertuples():
+    for day_number, d in enumerate(dates):
+        scheduled = (
+            c.plan == "daily"
+            or (c.plan == "alternate_days" and day_number % 2 == 0)
+            or (c.plan == "weekly" and d.weekday() == 4)
+        )
+        if scheduled:
+            qty = int(c.staple_qty) * (3 if c.plan == "weekly" else 1)
+            rows.append((c.customer_id, c.staple_product_id, d.date(),
+                         c.preferred_slot, qty, "delivered",
+                         qty * price[c.staple_product_id]))
+
+interactions = pd.DataFrame(rows, columns=[
+    "customer_id", "product_id", "date", "slot", "quantity", "status", "amount_pkr"])
+print(interactions.head())
+print(len(interactions))
