@@ -8,7 +8,8 @@ DATA_DIR.mkdir(exist_ok=True)
 N_CUSTOMERS = 20
 N_DAYS = 28
 START_DATE = "2026-10-01"
-rng = np.random.default_rng(42)  # fixed seed: same data every run
+rng = np.random.default_rng(42)
+pause_rng = np.random.default_rng(7)  # separate generator used only for pauses  # fixed seed: same data every run
 
 # ---------- 1. Products (8) ----------
 products = pd.DataFrame({
@@ -39,13 +40,16 @@ print(customers["plan"].value_counts())
 dates = pd.date_range(START_DATE, periods=N_DAYS, freq="D")
 rows = []
 
+# Draw every customer's pause up front, from its own generator.
+pauses = {}
 for c in customers.itertuples():
-    # Decide the pause ONCE per customer, before the day loop.
-    pause_start = pause_end = None
-    if rng.random() < 0.25:
-        pause_start = int(rng.integers(3, 20))
-        pause_length = int(rng.integers(3, 8))
-        pause_end = pause_start + pause_length - 1
+    if pause_rng.random() < 0.25:
+        start = int(pause_rng.integers(3, 20))
+        length = int(pause_rng.integers(3, 8))
+        pauses[c.customer_id] = (start, start + length - 1)
+
+for c in customers.itertuples():
+    pause_start, pause_end = pauses.get(c.customer_id, (None, None))
 
     for day_number, d in enumerate(dates):
         # paused day: quantity 0, empty amount
@@ -69,8 +73,19 @@ for c in customers.itertuples():
                              c.preferred_slot, qty, "delivered",
                              qty * price[c.staple_product_id]))
 
+        # extras (dahi, ghee, ...): more likely at weekends
+        boost = 1.6 if d.weekday() in (4, 5, 6) else 1.0
+        for pid, p in {3: 0.12, 4: 0.01, 5: 0.03, 6: 0.04, 7: 0.06, 8: 0.08}.items():
+            if rng.random() < p * boost:
+                rows.append((c.customer_id, pid, d.date(), c.preferred_slot,
+                             1, "delivered", price[pid]))
+
 interactions = pd.DataFrame(rows, columns=[
     "customer_id", "product_id", "date", "slot", "quantity", "status", "amount_pkr"])
+interactions = interactions.sort_values(["date", "customer_id"]).reset_index(drop=True)
+interactions["amount_pkr"] = interactions["amount_pkr"].astype("Int64")
+interactions.to_csv(DATA_DIR / "interactions.csv", index=False)
+
 print(interactions.head())
 print(len(interactions))
 print(interactions["status"].value_counts())
