@@ -33,5 +33,5 @@ customers = pd.DataFrame({
 
 products.to_csv(DATA_DIR / "products.csv", index=False)
 customers.to_csv(DATA_DIR / "customers.csv", index=False)
-print(products)
-print(customers.head())
+print(customers)
+print(customers["plan"].value_counts())
