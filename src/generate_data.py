@@ -40,7 +40,20 @@ dates = pd.date_range(START_DATE, periods=N_DAYS, freq="D")
 rows = []
 
 for c in customers.itertuples():
+    # Decide the pause ONCE per customer, before the day loop.
+    pause_start = pause_end = None
+    if rng.random() < 0.25:
+        pause_start = int(rng.integers(3, 20))
+        pause_length = int(rng.integers(3, 8))
+        pause_end = pause_start + pause_length - 1
+
     for day_number, d in enumerate(dates):
+        # paused day: quantity 0, empty amount
+        if pause_start is not None and pause_start <= day_number <= pause_end:
+            rows.append((c.customer_id, c.staple_product_id, d.date(),
+                         c.preferred_slot, 0, "paused", None))
+            continue
+
         scheduled = (
             c.plan == "daily"
             or (c.plan == "alternate_days" and day_number % 2 == 0)
@@ -48,11 +61,17 @@ for c in customers.itertuples():
         )
         if scheduled:
             qty = int(c.staple_qty) * (3 if c.plan == "weekly" else 1)
-            rows.append((c.customer_id, c.staple_product_id, d.date(),
-                         c.preferred_slot, qty, "delivered",
-                         qty * price[c.staple_product_id]))
+            if rng.random() < 0.05:
+                rows.append((c.customer_id, c.staple_product_id, d.date(),
+                             c.preferred_slot, 0, "skipped", None))
+            else:
+                rows.append((c.customer_id, c.staple_product_id, d.date(),
+                             c.preferred_slot, qty, "delivered",
+                             qty * price[c.staple_product_id]))
 
 interactions = pd.DataFrame(rows, columns=[
     "customer_id", "product_id", "date", "slot", "quantity", "status", "amount_pkr"])
 print(interactions.head())
 print(len(interactions))
+print(interactions["status"].value_counts())
+print("Customers with a pause:", sorted(interactions[interactions["status"] == "paused"]["customer_id"].unique()))
