@@ -67,9 +67,11 @@ def skip_rate(df):
     return round(skipped / (skipped + delivered), 4)
 
 def pause_rate(df):
+    n_customers = df["customer_id"].nunique()
+    if n_customers == 0:
+        raise DataValidationError("No customers, so the pause rate cannot be calculated.")
     paused_customers = df[df["status"] == "paused"]["customer_id"].nunique()
-    return round(float(paused_customers / df["customer_id"].nunique()), 4)
-
+    return round(float(paused_customers / n_customers), 4)
 
 def deliveries_by_weekday(df):
     names = pd.to_datetime(get_delivered(df)["date"]).dt.day_name()
