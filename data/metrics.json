@@ -1,0 +1,38 @@
+{
+  "counts": {
+    "n_customers": 20,
+    "n_products": 8,
+    "n_interactions": 614,
+    "n_purchases": 587
+  },
+  "purchases_per_customer": {
+    "mean": 29.35,
+    "median": 29.5,
+    "std": 9.01
+  },
+  "top_products": {
+    "Full-Cream Milk 1L": 233,
+    "Low-Fat Milk 1L": 126,
+    "Dahi (Yogurt) 500g": 82,
+    "Farm Eggs (Dozen)": 48,
+    "Sweet Lassi 500ml": 42
+  },
+  "repeat_purchase_rate_all": 0.75,
+  "repeat_purchase_rate_extras": 0.6932,
+  "sparsity": 0.325,
+  "skip_rate": 0.0349,
+  "pause_rate": 0.15,
+  "deliveries_by_weekday": {
+    "Monday": 66,
+    "Tuesday": 65,
+    "Wednesday": 69,
+    "Thursday": 79,
+    "Friday": 106,
+    "Saturday": 106,
+    "Sunday": 96
+  },
+  "deliveries_by_slot": {
+    "morning": 466,
+    "evening": 121
+  }
+}
