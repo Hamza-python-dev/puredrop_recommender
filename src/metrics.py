@@ -62,9 +62,9 @@ def skip_rate(df):
     skipped = int((staple["status"] == "skipped").sum())
     delivered = int((staple["status"] == "delivered").sum())
     if skipped + delivered == 0:
-        return 0.0
+        raise DataValidationError(
+            "No staple (milk) rows, so the skip rate cannot be calculated.")
     return round(skipped / (skipped + delivered), 4)
-
 
 def pause_rate(df):
     paused_customers = df[df["status"] == "paused"]["customer_id"].nunique()
@@ -85,6 +85,11 @@ def deliveries_by_slot(df):
 def compute_metrics(df, products):
     if len(get_delivered(df)) == 0:
         raise DataValidationError("No delivered rows, so there is nothing to measure.")
+    unknown = set(df["product_id"]) - set(products["product_id"])
+    if unknown:
+        raise DataValidationError(
+            "product_id in interactions but not in products.csv: "
+            f"{sorted(int(p) for p in unknown)}")
     n_products = len(products)
     return {
         "counts": count_basics(df),
