@@ -110,12 +110,15 @@ def check_with_customers(df, customers):
     m = df.merge(customers[["customer_id", "plan", "staple_product_id"]],
                  on="customer_id", how="left")
     d = pd.to_datetime(m["date"], format="%Y-%m-%d")
-    day_number = (d - d.min()).dt.days
+    first_day = d.groupby(m["customer_id"]).transform("min")
+    day_number = (d - first_day).dt.days
     staple = (m["product_id"] == m["staple_product_id"]) & m["status"].isin(["delivered", "skipped"])
+
     bad = m[(m["plan"] == "alternate_days") & staple & (day_number % 2 != 0)]
     if len(bad):
         _fail("alternate_days staple rows must fall on every second day", bad)
-        bad = m[(m["plan"] == "weekly") & staple & (d.dt.day_of_week != 4)]
+
+    bad = m[(m["plan"] == "weekly") & staple & (d.dt.day_of_week != 4)]
     if len(bad):
         _fail("weekly staple rows must fall on a Friday", bad)
 
