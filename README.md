@@ -29,7 +29,7 @@ python -m pytest -v           # runs the tests
 ```
 
 Expected: `python -m src.validate` prints
-`OK: 614 rows checked, all rules passed.` and pytest prints `2 passed`.
+`OK: 614 rows checked, all rules passed` and pytest prints `2 passed`.
 
 ## What the data is
 
@@ -42,6 +42,33 @@ Expected: `python -m src.validate` prints
 Status is `delivered`, `skipped` (one missed day) or `paused` (a block of
 consecutive days). Skipped and paused rows have quantity 0 and an empty amount.
 
+## What `python -m src.validate` checks
+
+"All rules passed" means every one of these held for `data/interactions.csv`.
+If a rule fails, the program prints which rule and which rows, then stops.
+
+**File and columns**
+- The file exists, is not empty, and has data rows (not just a header).
+- All 7 columns are present: customer_id, product_id, date, slot, quantity,
+  status, amount_pkr.
+
+**Values in each row**
+- `status` is one of `delivered`, `skipped`, `paused`.
+- `slot` is one of `morning`, `evening`.
+- `date` is a real date in the format `YYYY-MM-DD`.
+- `quantity` is a number that is 0 or more.
+- A `delivered` row has quantity 1 or more and an amount in PKR.
+- A `skipped` or `paused` row has quantity 0 and an empty amount.
+- No duplicate rows for the same customer, product and date.
+
+**Checks against `data/customers.csv`**
+- Every customer in interactions exists in customers.csv.
+- Each customer has at most one pause, with no gaps inside it, and nothing but
+  paused rows inside it.
+- A customer on `alternate_days` gets their staple milk every second day,
+  counted from their own first date.
+- A customer on `weekly` gets their staple milk on Friday.
+
 ## Metrics (data/metrics.json)
 
 `metrics.json` is a text file holding the results below as a dictionary. The
@@ -51,42 +78,4 @@ program creates it.
 |---|---|---|
 | Interactions / purchases | 614 / 587 | all rows / delivered rows only |
 | Purchases per customer | mean 29.35, median 29.5 | delivered rows per customer |
-| Repeat purchase rate (all) | 0.75 | of the customer-product pairs bought at least once, the share delivered on 2 or more different days |
-| Repeat purchase rate (extras only) | 0.6932 | same, but the two milk products (ids 1 and 2) left out |
-| Sparsity | 0.325 | share of customer-product pairs with no purchase |
-| Skip rate | 0.0349 | skipped milk days as a share of skipped + delivered milk days (paused days not counted) |
-| Pause rate | 0.15 | share of customers who paused at least once |
-| Top products (names shortened) | Full-Cream Milk 233, Low-Fat Milk 126, Dahi 82, Farm Eggs 48, Sweet Lassi 42 | most delivered products |
-
-Sparsity 0.325 is **low**: with only 8 products and random buying, most
-customers touched most products. Real data would be much sparser.
-
-## Wrong or empty input
-
-Missing, empty or broken files do not crash the program. It prints one clear
-message and stops. Example with `interactions.csv` missing:
-
-```
-File not found: data\interactions.csv. Run python src/generate_data.py first.
-```
-
-The rules are in `src/validate.py` (missing columns, bad status, negative
-quantity, unknown customer, and others).
-
-## Tests
-
-`python -m pytest -v` runs `tests/test_metrics.py` (2 tests, using a small
-table built inside the test, not the real CSV):
-
-1. Main path: `compute_metrics` returns all the expected keys.
-2. Failure path: a `product_id` that is not in products raises
-   `DataValidationError`.
-
-The validation rules were also checked by hand by breaking data in memory.
-
-## Performance and security notes
-
-- Performance: pandas handles these 614 rows quickly. Much larger data would
-  need to be tested again.
-- Security: no passwords, keys or real customer data in the repo. All data is
-  generated, and input files are validated before use.
+| Repeat
