@@ -36,3 +36,9 @@ def test_compute_metrics_returns_expected_keys():
     ]
     for key in expected:
         assert key in result
+
+def test_unknown_product_id_raises_error():
+    df = make_interactions()
+    df.loc[0, "product_id"] = 999   # 999 is not in make_products()
+    with pytest.raises(DataValidationError):
+        compute_metrics(df, make_products())       
